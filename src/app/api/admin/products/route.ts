@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
@@ -62,12 +62,14 @@ export async function POST(request: Request) {
     if (uploadedFile instanceof File && uploadedFile.size > 0) {
       const uploadDir = path.join(process.cwd(), "public", "uploads", "products");
       mkdirSync(uploadDir, { recursive: true });
+      chmodSync(uploadDir, 0o775);
 
       const extension = path.extname(uploadedFile.name || ".jpg") || ".jpg";
       const filename = `${Date.now()}-${Math.random().toString(16).slice(2)}${extension}`;
       const targetPath = path.join(uploadDir, filename);
 
       writeFileSync(targetPath, Buffer.from(await uploadedFile.arrayBuffer()));
+      chmodSync(targetPath, 0o775);
       imageUrl = `/uploads/products/${filename}`;
     }
 
