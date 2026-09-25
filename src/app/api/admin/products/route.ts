@@ -74,6 +74,7 @@ export async function POST(request: Request) {
     }
 
     const id = `prod-${Date.now()}-${randomBytes(4).toString("hex")}`;
+    const now = new Date();
     await db.insert(products).values({
       id,
       slug,
@@ -86,6 +87,8 @@ export async function POST(request: Request) {
       description: description || `Produk ${name} dari Multijaya.`,
       image: imageUrl,
       features,
+      createdAt: now,
+      updatedAt: now,
     });
     const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
 

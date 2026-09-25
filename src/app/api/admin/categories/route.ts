@@ -20,7 +20,12 @@ export async function GET() {
     productCategories
       .map((item) => item.category.trim())
       .filter(Boolean)
-        .map(async (name) => db.insert(categories).values({ id: randomUUID(), name }).onDuplicateKeyUpdate({ set: { name } })),
+        .map(async (name) => {
+          const now = new Date();
+          return db.insert(categories)
+            .values({ id: randomUUID(), name, createdAt: now, updatedAt: now })
+            .onDuplicateKeyUpdate({ set: { name } });
+        }),
   );
 
       const result = await db.select().from(categories).orderBy(asc(categories.name));
@@ -40,7 +45,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    await db.insert(categories).values({ id: randomUUID(), name });
+    const now = new Date();
+    await db.insert(categories).values({ id: randomUUID(), name, createdAt: now, updatedAt: now });
   } catch (error: unknown) {
     if (isDuplicateError(error)) return NextResponse.json({ message: "Kategori sudah tersedia." }, { status: 409 });
     throw error;

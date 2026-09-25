@@ -1,4 +1,5 @@
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
@@ -128,12 +129,22 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, id)).limit(1);
+  const [product] = await db.select({ id: products.id, image: products.image }).from(products).where(eq(products.id, id)).limit(1);
 
   if (!product) {
     return NextResponse.json({ message: "Produk tidak ditemukan" }, { status: 404 });
   }
 
   await db.delete(products).where(eq(products.id, id));
+
+  if (product.image.startsWith("/uploads/products/")) {
+    const filename = path.basename(product.image);
+    const imagePath = path.join(process.cwd(), "public", "uploads", "products", filename);
+    await unlink(imagePath).catch((error: unknown) => {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
+      throw error;
+    });
+  }
+
   return NextResponse.json({ message: "Produk berhasil dihapus." });
 }

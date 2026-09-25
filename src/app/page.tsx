@@ -1,27 +1,35 @@
 import Link from "next/link";
 import { ProductCatalog } from "@/components/ProductCatalog";
 import { getCategories, getProducts } from "@/lib/products";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const products = await getProducts();
   const categories = await getCategories();
+  const settings = await getSiteSettings();
 
   return (
     <main className="flex-1">
-      <section className="border-b border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900 text-white">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900 text-white">
+        {settings.bannerImage ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-35"
+            style={{ backgroundImage: `url(${settings.bannerImage})` }}
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-slate-950/25" />
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-24">
-          <div>
+          <div className="relative z-10">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-300">
-              PT Multijaya
+              {settings.bannerEyebrow}
             </p>
             <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl">
-              Katalog produk lengkap dengan harga transparan.
+              {settings.bannerTitle}
             </h1>
             <p className="mt-4 max-w-xl text-slate-200">
-              Data produk dan harga diambil dari MySQL Laragon. Admin dapat mengubah
-              stok, harga, dan foto produk langsung dari panel kontrol.
+              {settings.bannerDescription}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -32,7 +40,7 @@ export default async function Home() {
               </Link>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="relative z-10 grid grid-cols-2 gap-4">
             {[
               { label: "Jenis produk", value: `${products.length}+` },
               { label: "Kategori", value: `${categories.length - 1}` },
@@ -48,6 +56,14 @@ export default async function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section id="tentang-kami" className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600">Tentang kami</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{settings.storeName}</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">{settings.storeDescription}</p>
         </div>
       </section>
 

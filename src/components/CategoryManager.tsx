@@ -85,27 +85,27 @@ export function CategoryManager({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-5">
-      <form onSubmit={addCategory} className="flex max-w-xl gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <form onSubmit={addCategory} className="flex max-w-xl gap-2 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
         <input
           required
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Nama kategori baru"
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+          className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
         />
-        <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
           Tambah
         </button>
       </form>
 
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
         {loading ? <p className="text-sm text-slate-500">Memuat kategori...</p> : null}
         {!loading && categories.length === 0 ? <p className="text-sm text-slate-500">Belum ada kategori.</p> : null}
         <div className="space-y-2">
           {categories.map((category) => (
-            <div key={category.id} className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-0">
+            <div key={category.id} className="flex items-center gap-3 rounded-2xl border-b border-slate-100 py-3 last:border-0">
               {editingId === category.id ? (
                 <input
                   autoFocus
@@ -154,7 +154,7 @@ export function CategoryManager({ products }: { products: Product[] }) {
       </div>
 
       {selectedCategory ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-semibold text-slate-900">Produk kategori: {selectedCategory}</h2>

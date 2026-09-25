@@ -1,2 +1,0 @@
-ALTER TABLE `OrderItem` ADD CONSTRAINT `OrderItem_orderId_Order_id_fk` FOREIGN KEY (`orderId`) REFERENCES `Order`(`id`) ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE `OrderItem` ADD CONSTRAINT `OrderItem_productId_Product_id_fk` FOREIGN KEY (`productId`) REFERENCES `Product`(`id`) ON DELETE restrict ON UPDATE cascade;

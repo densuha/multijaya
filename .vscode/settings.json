@@ -1,5 +1,9 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "npm install": true
+        "npm install": true,
+        "/^cmd\\.exe /c \"for %I in \\(public\\\\uploads\\\\products\\\\1790351561565-7c278b14824b5\\.jpg\\) do @echo %~fI %~zI\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

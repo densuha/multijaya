@@ -41,7 +41,8 @@ export async function POST(request: Request) {
 
   try {
     const id = randomUUID();
-    await db.insert(adminUsers).values({ id, username, passwordHash: hashPassword(password), role });
+    const now = new Date();
+    await db.insert(adminUsers).values({ id, username, passwordHash: hashPassword(password), role, createdAt: now, updatedAt: now });
     const [user] = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role, createdAt: adminUsers.createdAt })
       .from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
     return NextResponse.json({ user, message: "Pengguna berhasil ditambahkan." }, { status: 201 });
