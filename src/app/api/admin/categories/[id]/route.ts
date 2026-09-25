@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { categories } from "@/lib/db/schema";
+
+function isDuplicateError(error: unknown) {
+  return error && typeof error === "object" && (("code" in error && error.code === "ER_DUP_ENTRY") || ("errno" in error && error.errno === 1062));
+}
 
 export async function PATCH(
   request: Request,
@@ -19,10 +25,12 @@ export async function PATCH(
   }
 
   try {
-    const category = await prisma.category.update({ where: { id }, data: { name } });
+    const result = await db.update(categories).set({ name, updatedAt: new Date() }).where(eq(categories.id, id));
+    if (!result[0].affectedRows) return NextResponse.json({ message: "Kategori tidak ditemukan." }, { status: 404 });
+    const [category] = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
     return NextResponse.json({ category, message: "Kategori berhasil diperbarui." });
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+    if (isDuplicateError(error)) {
       return NextResponse.json({ message: "Kategori sudah tersedia." }, { status: 409 });
     }
     return NextResponse.json({ message: "Kategori tidak ditemukan." }, { status: 404 });
@@ -40,7 +48,8 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await prisma.category.delete({ where: { id } });
+    const result = await db.delete(categories).where(eq(categories.id, id));
+    if (!result[0].affectedRows) return NextResponse.json({ message: "Kategori tidak ditemukan." }, { status: 404 });
     return NextResponse.json({ message: "Kategori berhasil dihapus." });
   } catch {
     return NextResponse.json({ message: "Kategori tidak ditemukan." }, { status: 404 });

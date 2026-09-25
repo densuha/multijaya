@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { randomBytes } from "node:crypto";
+import { db } from "@/lib/db";
+import { siteSettings } from "@/lib/db/schema";
 
 const defaultSettings = {
   whatsappNumber: "6281234567890",
@@ -8,9 +10,8 @@ const defaultSettings = {
 };
 
 export async function getSiteSettings() {
-  const entries = await prisma.siteSetting.findMany();
+  const entries = await db.select().from(siteSettings);
   const map = Object.fromEntries(entries.map((item) => [item.key, item.value]));
-
   return {
     whatsappNumber: map.whatsappNumber ?? defaultSettings.whatsappNumber,
     storeName: map.storeName ?? defaultSettings.storeName,
@@ -20,16 +21,13 @@ export async function getSiteSettings() {
 }
 
 export async function saveSiteSettings(values: Partial<typeof defaultSettings>) {
-  const entries = Object.entries(values);
-
-  for (const [key, value] of entries) {
+  for (const [key, value] of Object.entries(values)) {
     if (typeof value !== "string" || !value.trim()) continue;
-    await prisma.siteSetting.upsert({
-      where: { key },
-      update: { value: value.trim() },
-      create: { key, value: value.trim() },
-    });
+    await db.insert(siteSettings).values({
+      id: `setting-${Date.now()}-${randomBytes(4).toString("hex")}`,
+      key,
+      value: value.trim(),
+    }).onDuplicateKeyUpdate({ set: { value: value.trim(), updatedAt: new Date() } });
   }
-
   return getSiteSettings();
 }

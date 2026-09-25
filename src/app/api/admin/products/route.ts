@@ -1,8 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { products } from "@/lib/db/schema";
 
 function slugify(value: string) {
   return value
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
     let slug = baseSlug;
     let index = 1;
 
-    while (await prisma.product.findUnique({ where: { slug } })) {
+    while ((await db.select({ id: products.id }).from(products).where(eq(products.slug, slug)).limit(1)).length) {
       slug = `${baseSlug}-${index}`;
       index += 1;
     }
@@ -68,21 +71,21 @@ export async function POST(request: Request) {
       imageUrl = `/uploads/products/${filename}`;
     }
 
-    const product = await prisma.product.create({
-      data: {
-        id: `prod-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        slug,
-        name,
-        category,
-        price: Math.round(price),
-        stock: Math.max(0, Math.round(stock)),
-        unit,
-        rating: 0,
-        description: description || `Produk ${name} dari Multijaya.`,
-        image: imageUrl,
-        features,
-      },
+    const id = `prod-${Date.now()}-${randomBytes(4).toString("hex")}`;
+    await db.insert(products).values({
+      id,
+      slug,
+      name,
+      category,
+      price: Math.round(price),
+      stock: Math.max(0, Math.round(stock)),
+      unit,
+      rating: 0,
+      description: description || `Produk ${name} dari Multijaya.`,
+      image: imageUrl,
+      features,
     });
+    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
 
     return NextResponse.json({ product, message: "Produk berhasil ditambahkan." }, { status: 201 });
   } catch (error) {

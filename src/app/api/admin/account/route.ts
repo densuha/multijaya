@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { getCurrentAdmin, hashPassword, isAdminLoggedIn, setAdminSession } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
+
+function isDuplicateError(error: unknown) {
+  return error && typeof error === "object" && (("code" in error && error.code === "ER_DUP_ENTRY") || ("errno" in error && error.errno === 1062));
+}
 
 export async function GET() {
   const account = await getCurrentAdmin();
@@ -33,19 +39,13 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const account = await prisma.adminUser.update({
-      where: { id: current.id },
-      data: {
-        username,
-        role,
-        ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
-      },
-      select: { id: true, username: true, role: true },
-    });
+    await db.update(adminUsers).set({ username, role, ...(body.password ? { passwordHash: hashPassword(body.password) } : {}), updatedAt: new Date() }).where(eq(adminUsers.id, current.id));
+    const [account] = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role })
+      .from(adminUsers).where(eq(adminUsers.id, current.id)).limit(1);
     await setAdminSession(account.username);
     return NextResponse.json({ account, message: "Pengaturan akun berhasil disimpan." });
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+    if (isDuplicateError(error)) {
       return NextResponse.json({ message: "Username sudah digunakan." }, { status: 409 });
     }
     return NextResponse.json({ message: "Gagal menyimpan pengaturan akun." }, { status: 500 });

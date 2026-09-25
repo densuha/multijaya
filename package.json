@@ -7,15 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@prisma/client": "6.16.3",
+    "drizzle-orm": "^0.45.3",
+    "mysql2": "^3.24.4",
     "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -25,9 +24,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.3",
+    "drizzle-kit": "^0.31.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
-    "prisma": "6.16.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
+import { asc, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { getCurrentAdmin, hashPassword, isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
+
+function isDuplicateError(error: unknown) {
+  return error && typeof error === "object" && (("code" in error && error.code === "ER_DUP_ENTRY") || ("errno" in error && error.errno === 1062));
+}
 
 export async function GET() {
   const current = await getCurrentAdmin();
@@ -8,10 +15,8 @@ export async function GET() {
     return NextResponse.json({ message: "Hanya admin yang dapat mengelola pengguna." }, { status: 403 });
   }
 
-  const users = await prisma.adminUser.findMany({
-    select: { id: true, username: true, role: true, createdAt: true },
-    orderBy: { username: "asc" },
-  });
+  const users = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role, createdAt: adminUsers.createdAt })
+    .from(adminUsers).orderBy(asc(adminUsers.username));
   return NextResponse.json({ users });
 }
 
@@ -35,13 +40,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await prisma.adminUser.create({
-      data: { username, passwordHash: hashPassword(password), role },
-      select: { id: true, username: true, role: true, createdAt: true },
-    });
+    const id = randomUUID();
+    await db.insert(adminUsers).values({ id, username, passwordHash: hashPassword(password), role });
+    const [user] = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role, createdAt: adminUsers.createdAt })
+      .from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
     return NextResponse.json({ user, message: "Pengguna berhasil ditambahkan." }, { status: 201 });
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+    if (isDuplicateError(error)) {
       return NextResponse.json({ message: "Username sudah digunakan." }, { status: 409 });
     }
     return NextResponse.json({ message: "Gagal menambahkan pengguna." }, { status: 500 });

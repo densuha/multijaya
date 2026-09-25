@@ -1,26 +1,30 @@
 import { NextResponse } from "next/server";
+import { asc, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { categories, products } from "@/lib/db/schema";
+
+function isDuplicateError(error: unknown) {
+  return error && typeof error === "object" && (("code" in error && error.code === "ER_DUP_ENTRY") || ("errno" in error && error.errno === 1062));
+}
 
 export async function GET() {
   if (!(await isAdminLoggedIn())) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const productCategories = await prisma.product.findMany({
-    distinct: ["category"],
-    select: { category: true },
-  });
+  const productCategories = await db.select({ category: products.category }).from(products).groupBy(products.category);
 
   await Promise.all(
     productCategories
       .map((item) => item.category.trim())
       .filter(Boolean)
-      .map((name) => prisma.category.upsert({ where: { name }, update: {}, create: { name } })),
+        .map(async (name) => db.insert(categories).values({ id: randomUUID(), name }).onDuplicateKeyUpdate({ set: { name } })),
   );
 
-  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json({ categories });
+      const result = await db.select().from(categories).orderBy(asc(categories.name));
+      return NextResponse.json({ categories: result });
 }
 
 export async function POST(request: Request) {
@@ -35,16 +39,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Nama kategori wajib diisi." }, { status: 400 });
   }
 
-  const category = await prisma.category.create({ data: { name } }).catch((error: unknown) => {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
-      return null;
-    }
+  try {
+    await db.insert(categories).values({ id: randomUUID(), name });
+  } catch (error: unknown) {
+    if (isDuplicateError(error)) return NextResponse.json({ message: "Kategori sudah tersedia." }, { status: 409 });
     throw error;
-  });
-
-  if (!category) {
-    return NextResponse.json({ message: "Kategori sudah tersedia." }, { status: 409 });
   }
+  const [category] = await db.select().from(categories).where(eq(categories.name, name)).limit(1);
 
   return NextResponse.json({ category, message: "Kategori berhasil ditambahkan." }, { status: 201 });
 }

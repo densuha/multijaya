@@ -1,8 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { products } from "@/lib/db/schema";
 
 function slugify(value: string) {
   return value
@@ -23,7 +25,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const product = await prisma.product.findUnique({ where: { id } });
+  const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
 
   if (!product) {
     return NextResponse.json({ message: "Produk tidak ditemukan" }, { status: 404 });
@@ -73,10 +75,8 @@ export async function PATCH(
     }
     if (imageUrl) updateData.image = imageUrl;
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: updateData,
-    });
+    await db.update(products).set(updateData as Partial<typeof products.$inferInsert>).where(eq(products.id, id));
+    const [updated] = await db.select().from(products).where(eq(products.id, id)).limit(1);
 
     return NextResponse.json({ product: updated });
   }
@@ -111,10 +111,8 @@ export async function PATCH(
   if (typeof body.image === "string" && body.image.trim()) updateData.image = body.image.trim();
   if (imageUrl) updateData.image = imageUrl;
 
-  const updated = await prisma.product.update({
-    where: { id },
-    data: updateData,
-  });
+  await db.update(products).set(updateData as Partial<typeof products.$inferInsert>).where(eq(products.id, id));
+  const [updated] = await db.select().from(products).where(eq(products.id, id)).limit(1);
 
   return NextResponse.json({ product: updated });
 }
@@ -128,12 +126,12 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const product = await prisma.product.findUnique({ where: { id } });
+  const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, id)).limit(1);
 
   if (!product) {
     return NextResponse.json({ message: "Produk tidak ditemukan" }, { status: 404 });
   }
 
-  await prisma.product.delete({ where: { id } });
+  await db.delete(products).where(eq(products.id, id));
   return NextResponse.json({ message: "Produk berhasil dihapus." });
 }

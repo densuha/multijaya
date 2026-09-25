@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { EditProductForm } from "@/components/EditProductForm";
 import { isAdminLoggedIn } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { products } from "@/lib/db/schema";
 import { getCategories } from "@/lib/products";
 import type { Product } from "@/types/product";
 
@@ -13,7 +15,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   if (!(await isAdminLoggedIn())) redirect("/admin/login");
 
   const { id } = await params;
-  const item = await prisma.product.findUnique({ where: { id } });
+  const [item] = await db.select().from(products).where(eq(products.id, id)).limit(1);
   if (!item) notFound();
   const categories = await getCategories();
 

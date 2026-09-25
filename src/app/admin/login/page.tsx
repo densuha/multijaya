@@ -19,9 +19,10 @@ export default function AdminLoginPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
+    const data = (await response.json().catch(() => ({}))) as { message?: string };
     setLoading(false);
     if (!response.ok) {
-      setError("Username atau password salah.");
+      setError(data.message ?? "Username atau password salah.");
       return;
     }
     router.push("/admin/produk");

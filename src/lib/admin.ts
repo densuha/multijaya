@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
 
 const COOKIE_NAME = "mj_admin";
 const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET ?? "multijaya-local-session";
@@ -33,19 +35,31 @@ function readSession(value: string) {
   return username && Number(expiresAt) > Date.now() ? username : null;
 }
 
+async function findAdminByUsername(username: string) {
+  const [account] = await db.select().from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
+  return account;
+}
+
 export async function ensureAdminAccount() {
   const username = process.env.ADMIN_USERNAME ?? "admin";
   const password = process.env.ADMIN_PASSWORD ?? "admin123";
-  const existing = await prisma.adminUser.findUnique({ where: { username } });
+  const existing = await findAdminByUsername(username);
   if (existing) return existing;
-  return prisma.adminUser.create({ data: { username, passwordHash: hashPassword(password), role: "admin" } });
+  await db.insert(adminUsers).values({
+    id: `admin-${Date.now()}-${randomBytes(4).toString("hex")}`,
+    username,
+    passwordHash: hashPassword(password),
+    role: "admin",
+  });
+  return findAdminByUsername(username);
 }
 
 export async function isAdminLoggedIn() {
   const jar = await cookies();
   const username = readSession(jar.get(COOKIE_NAME)?.value ?? "");
   if (!username) return false;
-  return Boolean(await prisma.adminUser.findUnique({ where: { username }, select: { id: true } }));
+  const [account] = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
+  return Boolean(account);
 }
 
 export async function setAdminSession(username: string) {
@@ -53,6 +67,7 @@ export async function setAdminSession(username: string) {
   jar.set(COOKIE_NAME, signSession(username), {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.AUTH_COOKIE_SECURE === "true",
     path: "/",
     maxAge: 60 * 60 * 12,
   });
@@ -68,8 +83,8 @@ export function checkAdminPassword(password: string) {
 }
 
 export async function authenticateAdmin(username: string, password: string) {
-  const account = await ensureAdminAccount();
-  const matchingAccount = await prisma.adminUser.findUnique({ where: { username: username.trim() } });
+  await ensureAdminAccount();
+  const matchingAccount = await findAdminByUsername(username.trim());
   if (!matchingAccount || !verifyPassword(password, matchingAccount.passwordHash)) return null;
   return matchingAccount;
 }
@@ -78,7 +93,9 @@ export async function getCurrentAdmin() {
   const jar = await cookies();
   const username = readSession(jar.get(COOKIE_NAME)?.value ?? "");
   if (!username) return null;
-  return prisma.adminUser.findUnique({ where: { username }, select: { id: true, username: true, role: true } });
+  const [account] = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role })
+    .from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
+  return account ?? null;
 }
 
 export { hashPassword };

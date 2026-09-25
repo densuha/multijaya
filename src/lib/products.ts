@@ -1,70 +1,42 @@
-import type { Product as PrismaProduct } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { and, asc, eq, like, ne, or } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { categories, products } from "@/lib/db/schema";
 import type { Product, ProductQuery } from "@/types/product";
 
-function mapProduct(item: PrismaProduct): Product {
-  return {
-    id: item.id,
-    slug: item.slug,
-    name: item.name,
-    category: item.category,
-    price: item.price,
-    stock: item.stock,
-    unit: item.unit,
-    rating: item.rating,
-    description: item.description,
-    image: item.image,
-    features: Array.isArray(item.features) ? (item.features as string[]) : [],
-  };
+type ProductRow = typeof products.$inferSelect;
+
+function mapProduct(item: ProductRow): Product {
+  return { ...item, features: Array.isArray(item.features) ? item.features : [] };
 }
 
 export async function getCategories() {
   const [groups, managedCategories] = await Promise.all([
-    prisma.product.groupBy({ by: ["category"], orderBy: { category: "asc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    db.select({ category: products.category }).from(products).groupBy(products.category).orderBy(asc(products.category)),
+    db.select().from(categories).orderBy(asc(categories.name)),
   ]);
-  const names = new Set([
-    ...groups.map((item) => item.category),
-    ...managedCategories.map((item) => item.name),
-  ]);
+  const names = new Set([...groups.map((item) => item.category), ...managedCategories.map((item) => item.name)]);
   return ["Semua", ...Array.from(names).sort()];
 }
 
 export async function getProducts(query: ProductQuery = {}): Promise<Product[]> {
   const keyword = query.q?.trim();
   const category = query.category?.trim();
-  const items = await prisma.product.findMany({
-    where: {
-      AND: [
-        category && category !== "Semua" ? { category } : {},
-        keyword
-          ? {
-              OR: [
-                { name: { contains: keyword } },
-                { id: { contains: keyword } },
-                { category: { contains: keyword } },
-              ],
-            }
-          : {},
-      ],
-    },
-    orderBy: { name: "asc" },
-  });
+  const filters = [];
+  if (category && category !== "Semua") filters.push(eq(products.category, category));
+  if (keyword) filters.push(or(like(products.name, `%${keyword}%`), like(products.id, `%${keyword}%`), like(products.category, `%${keyword}%`))!);
+  const items = await db.select().from(products).where(and(...filters)).orderBy(asc(products.name));
   return items.map(mapProduct);
 }
 
 export async function getProductBySlug(slug: string) {
-  const item = await prisma.product.findUnique({ where: { slug } });
+  const [item] = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
   return item ? mapProduct(item) : null;
 }
 
 export async function getRelatedProducts(slug: string, limit = 3) {
-  const current = await prisma.product.findUnique({ where: { slug } });
+  const [current] = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
   if (!current) return [];
-  const items = await prisma.product.findMany({
-    where: { slug: { not: slug }, category: current.category },
-    take: limit,
-    orderBy: { name: "asc" },
-  });
+  const items = await db.select().from(products).where(and(ne(products.slug, slug), eq(products.category, current.category)))
+    .limit(limit).orderBy(asc(products.name));
   return items.map(mapProduct);
 }

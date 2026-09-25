@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { getCurrentAdmin, hashPassword } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
+
+function isDuplicateError(error: unknown) {
+  return error && typeof error === "object" && (("code" in error && error.code === "ER_DUP_ENTRY") || ("errno" in error && error.errno === 1062));
+}
 
 async function requireAdmin() {
   const current = await getCurrentAdmin();
@@ -29,18 +35,13 @@ export async function PATCH(
   }
 
   try {
-    const user = await prisma.adminUser.update({
-      where: { id },
-      data: {
-        username,
-        role,
-        ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
-      },
-      select: { id: true, username: true, role: true, createdAt: true },
-    });
+    const result = await db.update(adminUsers).set({ username, role, ...(body.password ? { passwordHash: hashPassword(body.password) } : {}), updatedAt: new Date() }).where(eq(adminUsers.id, id));
+    if (!result[0].affectedRows) return NextResponse.json({ message: "Pengguna tidak ditemukan." }, { status: 404 });
+    const [user] = await db.select({ id: adminUsers.id, username: adminUsers.username, role: adminUsers.role, createdAt: adminUsers.createdAt })
+      .from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
     return NextResponse.json({ user, message: "Pengguna berhasil diperbarui." });
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+    if (isDuplicateError(error)) {
       return NextResponse.json({ message: "Username sudah digunakan." }, { status: 409 });
     }
     return NextResponse.json({ message: "Pengguna tidak ditemukan." }, { status: 404 });
@@ -60,7 +61,8 @@ export async function DELETE(
   }
 
   try {
-    await prisma.adminUser.delete({ where: { id } });
+    const result = await db.delete(adminUsers).where(eq(adminUsers.id, id));
+    if (!result[0].affectedRows) return NextResponse.json({ message: "Pengguna tidak ditemukan." }, { status: 404 });
     return NextResponse.json({ message: "Pengguna berhasil dihapus." });
   } catch {
     return NextResponse.json({ message: "Pengguna tidak ditemukan." }, { status: 404 });
