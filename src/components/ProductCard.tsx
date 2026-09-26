@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
       <div className="p-4 pt-3">
-        <AddToCartButton product={product} className="w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300" />
+        <AddToCartButton product={product} className="w-full rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-300" />
       </div>
     </article>
   );

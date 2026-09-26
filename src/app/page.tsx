@@ -58,14 +58,14 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      <section id="tentang-kami" className="border-b border-slate-200 bg-white">
+ 
+      {/* <section id="tentang-kami" className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600">Tentang kami</p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{settings.storeName}</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">{settings.storeDescription}</p>
         </div>
-      </section>
+      </section> */}
 
       <ProductCatalog initialProducts={products} initialCategories={categories} />
     </main>
